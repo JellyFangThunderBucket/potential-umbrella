@@ -5,7 +5,7 @@
 
 // @name			Supercharged Local Directory File Browser
 // @namespace		https://staybrowser.com/
-// @version			8.1.10
+// @version			8.1.11
 // @description		Makes directory index pages (either local or remote open directories) actually useful. Adds sidebar and content preview pane; keyboard navigation; sorting; light/dark UI; preview images/fonts in navigable grids; browse subdirectories w/o page reload (“tree view”); media playback, shuffle/loop options; basic playlist (m3u, extm3u) & cuesheet (.cue) support; create, edit, preview, save markdown/plain text files; open font files, view complete glyph repertoire, save glyphs as .svg; more.
 // @author			gaspar_schot
 // @license			GPL-3.0-or-later
@@ -91,23 +91,27 @@
 	//==============================//
 	function isTopWindow() { return ( window.top === window.self || false ) }																// ===> TOP WINDOW OR IFRAME
 	function getBrowser() { //*** needs testing for new userAgentData object --> what are possible brand names?; combine with getOS()		// ===> GET BROWSER
-		let brand = ( navigator.userAgentData !== undefined ? navigator.userAgentData.brands[1].brand.toLowerCase() : navigator.userAgent );
+		let user_agent = window.navigator.userAgent.toLowerCase();
+		let brands = ( navigator.userAgentData?.brands || [] ).map( brand => brand.brand.toLowerCase() ).join(' ');
+		let browser = brands +' '+ user_agent;
 		switch(true) {
-			case brand === 'chromium' || ( /chrome?chromium/.test(brand) ):	return 'is_chrome';
-			case brand === 'msie'	  || ( /msie/.test(brand) ):	return 'is_explorer';
-			// case brand === 'edge'	  || ( /edge/.test(brand) ):	return 'is_edge'; // need case for ms edge
-			case brand === 'opera'    || ( /opera/.test(brand) ):	return 'is_opera';
-			case brand === 'safari'   || ( /safari/.test(brand) ):	return 'is_safari';
-			case brand === 'firefox'  || ( !/chrome|chromium/.test(brand) ):	return 'is_gecko';
+			case /edg\//.test(browser) || /microsoft edge/.test(browser):	return 'is_chrome';	// Chromium-based Edge should use the Chrome layout rules.
+			case /opr\//.test(browser) || /opera/.test(browser):		return 'is_opera';
+			case /chrome|chromium|crios/.test(browser):			return 'is_chrome';	// ChromeOS may report Linux for platform, but still includes Chrome/Chromium here.
+			case /safari/.test(browser) && !/chrome|chromium|crios/.test(browser):	return 'is_safari';
+			case /firefox|fxios/.test(browser):				return 'is_gecko';
+			case /msie|trident/.test(browser):				return 'is_explorer';
+			default:							return 'is_chrome';	// Chromebook/userscript managers are Chrome-first; prefer working Chrome CSS over Gecko fallbacks.
 		}
 	}
 	function getOS() { // modded from https://***stackoverflow.com/questions/38241480/detect-macos-ios-windows-android-and-linux-os-with-js	// ===> GET OS
-		let platform = ( navigator.userAgentData !== undefined ? navigator.userAgentData.platform : window.navigator.platform ).toLowerCase();
+		let platform = ( navigator.userAgentData?.platform || window.navigator.platform || '' ).toLowerCase();
 		let user_agent = window.navigator.userAgent.toLowerCase();
 		let macos_platforms = ['macos','macintosh','macintel','macppc','mac68k'], ios_platforms = ['iphone','ipad','ipod'], windows_platforms = ['win32','win64','windows','wince'], os = null;
 		switch(true) {
 			case ios_platforms.indexOf(platform) !== -1:		os = 'ios';		break;
 			case platform === 'macintel' && navigator.maxTouchPoints > 1:	os = 'ios';		break;	// iPadOS reports as Mac; touch points distinguish it.
+			case /cros|chrome os|chromebook/.test(platform +' '+ user_agent):	os = 'chromeos';	break;
 			case macos_platforms.indexOf(platform) !== -1:		os = 'macos';	break;
 			case windows_platforms.indexOf(platform) !== -1:	os = 'windows';	break;
 			case /android/.test(user_agent):					os = 'android';	break;
@@ -116,6 +120,7 @@
 	  return os;
 	}
 	function isMobileOS() { return /ios|android/.test(getOS() || ''); }
+	function isLowPowerOS() { return /ios|android|chromeos/.test(getOS() || ''); }
 	function newURL(link) { try { return new URL(link,document.baseURI); } catch( error ) { return new URL(encodeURI(link) ); } }							// ===> NEW URL
 	function decodeURIComponentSafe(str) { if ( !str ) { return str; } // ===> DECODE URI COMPONENT SAFE; // Fix "%" error in file name; see stackoverflow.com/questions/7449588/why-does-decodeuricomponent-lock-up-my-browser
 		try { return decodeURIComponent(str.replace(/%(?![0-9a-fA-F]{2})/g,'%25') ).replace(/\"/g,'\&quot;');  } catch(e) { return str; }	// replace % with %25 if not followed by two a-f/number; replace " with html entity
@@ -1541,7 +1546,7 @@
 			formattedTime = formattedTime.replace(/^0/m,'');	return formattedTime;																// remove initial 0 and return formatted time
 	};
 	const Media_Duration_Queue = { active:0, items:[], timer:null };
-	function getMediaDurationConcurrency() { return ( isMobileOS() ? 1 : 4 ); }
+	function getMediaDurationConcurrency() { return ( isMobileOS() ? 1 : isLowPowerOS() ? 2 : 4 ); }
 	function scheduleMediaDurationQueue() {
 		if ( Media_Duration_Queue.timer !== null ) { return; }
 		if ( 'requestIdleCallback' in window ) {
