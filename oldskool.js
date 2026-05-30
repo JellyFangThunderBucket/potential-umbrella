@@ -1,26 +1,21 @@
 // ==UserScript==
-// @name         New Userscript
-// @namespace    https://staybrowser.com/
-// @version      0.1
-// @description  Template userscript created by Stay
-// @author       You
-// @match        *://*/*
-// @grant        none
-// ==/UserScript==
-// ==UserScript==
 
 /* eslint-disable no-case-declarations, no-fallthrough, indent, no-mixed-spaces-and-tabs, no-multi-spaces, no-return-assign, no-useless-escape, quotes */
 /* jshint esversion: 6 */
 
 // @name			Supercharged Local Directory File Browser
-// @version			8.1.8
+// @namespace		https://staybrowser.com/
+// @version			8.1.10
 // @description		Makes directory index pages (either local or remote open directories) actually useful. Adds sidebar and content preview pane; keyboard navigation; sorting; light/dark UI; preview images/fonts in navigable grids; browse subdirectories w/o page reload (“tree view”); media playback, shuffle/loop options; basic playlist (m3u, extm3u) & cuesheet (.cue) support; create, edit, preview, save markdown/plain text files; open font files, view complete glyph repertoire, save glyphs as .svg; more.
 // @author			gaspar_schot
 // @license			GPL-3.0-or-later
 // @homepageURL		https://openuserjs.org/scripts/gaspar_schot/Supercharged_Local_Directory_File_Browser
 // @icon data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIAAAACAAgMAAAC+UIlYAAAACVBMVEUmRcmZzP8zmf8pVcWPAAAAAXRSTlMAQObYZgAAAFBJREFUeF7tyqERwDAMBEE3mX5UiqDmqwwziTPHjG7xrmzrLFtRaApDIRiKQlMYCsFQFJrCUAiGotAU5hTA1WB4fhkMBsOJwWAwgHvB8CHpBcTbpxy4RZNvAAAAAElFTkSuQmCC
+// @match			*://*/*
 // @match			file://*/*
 // @match			https://www.example.com/path/to/directory/*
+// @run-at			document-end
+// @grant			none
 
 // @require https://cdn.jsdelivr.net/npm/markdown-it@13.0.1/dist/markdown-it.min.js
 // @require https://cdn.jsdelivr.net/npm/markdown-it-footnote@3.0.2/dist/markdown-it-footnote.min.js
@@ -108,16 +103,19 @@
 	}
 	function getOS() { // modded from https://***stackoverflow.com/questions/38241480/detect-macos-ios-windows-android-and-linux-os-with-js	// ===> GET OS
 		let platform = ( navigator.userAgentData !== undefined ? navigator.userAgentData.platform : window.navigator.platform ).toLowerCase();
-		let macos_platforms = ['macos','macintosh','macintel','macppc','mac68k'], windows_platforms = ['win32','win64','windows','wince'], os = null;
+		let user_agent = window.navigator.userAgent.toLowerCase();
+		let macos_platforms = ['macos','macintosh','macintel','macppc','mac68k'], ios_platforms = ['iphone','ipad','ipod'], windows_platforms = ['win32','win64','windows','wince'], os = null;
 		switch(true) {
+			case ios_platforms.indexOf(platform) !== -1:		os = 'ios';		break;
+			case platform === 'macintel' && navigator.maxTouchPoints > 1:	os = 'ios';		break;	// iPadOS reports as Mac; touch points distinguish it.
 			case macos_platforms.indexOf(platform) !== -1:		os = 'macos';	break;
 			case windows_platforms.indexOf(platform) !== -1:	os = 'windows';	break;
-			// case iosPlatforms.indexOf(platform) !== -1:		os = 'ios';		break; // just in case;
-			// case /Android/.test(userAgent):					os = 'android';	break; // just in case;
-			case !os && /Linux/.test(platform):					os = 'linux';	break;
+			case /android/.test(user_agent):					os = 'android';	break;
+			case !os && /linux/.test(platform):					os = 'linux';	break;
 		}
 	  return os;
 	}
+	function isMobileOS() { return /ios|android/.test(getOS() || ''); }
 	function newURL(link) { try { return new URL(link,document.baseURI); } catch( error ) { return new URL(encodeURI(link) ); } }							// ===> NEW URL
 	function decodeURIComponentSafe(str) { if ( !str ) { return str; } // ===> DECODE URI COMPONENT SAFE; // Fix "%" error in file name; see stackoverflow.com/questions/7449588/why-does-decodeuricomponent-lock-up-my-browser
 		try { return decodeURIComponent(str.replace(/%(?![0-9a-fA-F]{2})/g,'%25') ).replace(/\"/g,'\&quot;');  } catch(e) { return str; }	// replace % with %25 if not followed by two a-f/number; replace " with html entity
@@ -243,10 +241,10 @@
 	// ***** BASIC UI FUNCTIONS ***** //
 	function scrollThis(container_ID,sel,bool) {																							// ===> SCROLL to Selected Item
 		let container = getEl(container_ID);
-		const isInViewport = (sel) => { 
+		const isInViewport = (sel) => {
 			const rect = ( getEl(sel) !== null ? getEl(sel).getBoundingClientRect() : null ); if ( rect === null ) { return false; }
-			return ( 
-				rect.top >= getEl('#sidebar_header').offsetHeight && rect.bottom <= (window.innerHeight - getEl('#sidebar_footer').offsetHeight || document.documentElement.clientHeight - getEl('#sidebar_footer').offsetHeight) 
+			return (
+				rect.top >= getEl('#sidebar_header').offsetHeight && rect.bottom <= (window.innerHeight - getEl('#sidebar_footer').offsetHeight || document.documentElement.clientHeight - getEl('#sidebar_footer').offsetHeight)
 			);
 		}
 		if ( container?.height === 0 || isInViewport(sel) ) { return; }	// don't scroll hidden elements
@@ -535,7 +533,7 @@
 	<nav id="help_contents" class="align_center background_grey_85 no_hover border_bottom"><h2 id="contents" style="margin-bottom:0;"><strong>CONTENTS</strong></h2>        <ul class="margin_0 no_highlight bold"><li class="no_highlight"><a class="internal" href="#about">I. About this Script</a></li><li class="no_highlight"><a class="internal" href="#shortcuts">II. Keyboard Shortcuts</a></li><li class="no_highlight"><a class="internal" href="#usage">III. Usage</a></li><li class="no_highlight"><a class="internal" href="#other">IV. Other Script Functions</a></li><li class="no_highlight"><a class="internal" href="#troubleshooting">V. Troubleshooting</a></li></ul>        </nav>
 	<section class="line_height_1_4">
 		<article><h2 id="about"><strong>I. ABOUT THIS SCRIPT</strong></h2>
-			<dl><dt><a href="https://openuserjs.org/scripts/gaspar_schot/Supercharged_Local_Directory_File_Browser" class="has_icon_before link" target="_blank">Script home: openuserjs.org</a></dt></dl>            <dl><dt>GENERAL INFORMATION</dt>    <dd>This script works on <strong>local directories</strong>, as well as many remote server-generated index pages or &ldquo;<strong>open directories</strong>&rdquo;.</dd>    <dd>By default, userscripts do not run on local file:/// urls, so for this script to work on local directories you will need to enable it in your browser&rsquo;s extension settings (e.g.: For Tampermonkey in Chrome, open the Chrome extensions page, click the details button for Tampermonkey and check &lsquo;Allow access to file URLs&rsquo;).</dd>    <dd>To make the script work on a remote <strong>open directory</strong>, you must add its URL to the list of allowed sites in the settings for this userscript, as provided by your userscript manager.</dd>    <dd>Because server configurations vary, the script may not work perfectly (or at all) on some open directories, particularly those with a restrictive Content Security Policy (CSP). You may also need to allow&mdash;or block&mdash;javascript on some ODs, and/or allow cookies. Please let me know if you encounter any problems.</dd>    <dd>This script was developed in the latest version of Vivaldi, running on the latest MacOS. It has been <em>minimally</em> tested in other Chrome-based browsers, Safari, and Firefox, and has been <strong>not</strong> been tested in any other browsers or OSes. No effort has been made to ensure compatibility with older browsers. Please report any issues. </dd></dl>            <dl><dt><span class="invert" style="float:left; margin:4px 6px 0 0;">${ SVG_UI_Icons.ui_layout }</span>The UI consists of two main parts:</dt>   <dd>(1) the directory list <strong>SIDEBAR</strong> on the left and </dd>    <dd>(2) the <strong>CONTENT PANE</strong> on the right.</dd>    <dd>The Sidebar shows all the items in the current directory, while the Content Pane shows a preview of items selected in the Sidebar.</dd></dl>            <dl><dt>1. The <strong>SIDEBAR</strong> comprises a <strong>HEADER</strong>, the <strong>DIRECTORY LIST</strong> itself, and a <strong>FOOTER</strong>.</dt>    <dd>The <strong>Sidebar</strong> is resizeable; it can be hidden completely by clicking the double-chevron icon at the Sidebar top right or typing <b>&#8984;\</b>.</dd></dl>    
+			<dl><dt><a href="https://openuserjs.org/scripts/gaspar_schot/Supercharged_Local_Directory_File_Browser" class="has_icon_before link" target="_blank">Script home: openuserjs.org</a></dt></dl>            <dl><dt>GENERAL INFORMATION</dt>    <dd>This script works on <strong>local directories</strong>, as well as many remote server-generated index pages or &ldquo;<strong>open directories</strong>&rdquo;.</dd>    <dd>By default, userscripts do not run on local file:/// urls, so for this script to work on local directories you will need to enable it in your browser&rsquo;s extension settings (e.g.: For Tampermonkey in Chrome, open the Chrome extensions page, click the details button for Tampermonkey and check &lsquo;Allow access to file URLs&rsquo;).</dd>    <dd>To make the script work on a remote <strong>open directory</strong>, you must add its URL to the list of allowed sites in the settings for this userscript, as provided by your userscript manager.</dd>    <dd>Because server configurations vary, the script may not work perfectly (or at all) on some open directories, particularly those with a restrictive Content Security Policy (CSP). You may also need to allow&mdash;or block&mdash;javascript on some ODs, and/or allow cookies. Please let me know if you encounter any problems.</dd>    <dd>This script was developed in the latest version of Vivaldi, running on the latest MacOS. It has been <em>minimally</em> tested in other Chrome-based browsers, Safari, and Firefox, and has been <strong>not</strong> been tested in any other browsers or OSes. No effort has been made to ensure compatibility with older browsers. Please report any issues. </dd></dl>            <dl><dt><span class="invert" style="float:left; margin:4px 6px 0 0;">${ SVG_UI_Icons.ui_layout }</span>The UI consists of two main parts:</dt>   <dd>(1) the directory list <strong>SIDEBAR</strong> on the left and </dd>    <dd>(2) the <strong>CONTENT PANE</strong> on the right.</dd>    <dd>The Sidebar shows all the items in the current directory, while the Content Pane shows a preview of items selected in the Sidebar.</dd></dl>            <dl><dt>1. The <strong>SIDEBAR</strong> comprises a <strong>HEADER</strong>, the <strong>DIRECTORY LIST</strong> itself, and a <strong>FOOTER</strong>.</dt>    <dd>The <strong>Sidebar</strong> is resizeable; it can be hidden completely by clicking the double-chevron icon at the Sidebar top right or typing <b>&#8984;\</b>.</dd></dl>
 			<dl><dt>1A. The <strong>SIDEBAR HEADER</strong> contains a <strong>Parent Directory</strong> button, a <strong>Parent Directories</strong> menu which displays separate links for all the parent directories, and the <strong>Main Menu</strong>.</dt>   <dd>Below these are <strong>Show Details</strong> and <strong>Show Invisibles</strong> items, a <strong>Show Grid</strong> button (when appropriate), and sort by <strong>Name</strong> or <strong>Default</strong> items.</dd>    <dd>If <strong>Show Details</strong> is selected, additional sorting options are shown, along with the <strong>Text Editor</strong> item.</dd>    <dd>All of these items are also available in the Main Menu, and some can be toggled via keyboard shortcuts (see below).</dd></dl>            <dl><dt>1B. The <strong>DIRECTORY LIST</strong> displays the items in the current directory.</dt>    <dd>Directory items can be selected with the arrow keys or by clicking.</dd>    <dd>Selecting an item will preview it in the content pane.</dd>    <dd>Multiple directories, fonts, or images can be selected with shift+arrowkey, cmd+click, or shift+click.</dd>    <dd>Directories can be previewed in the content pane or toggled open in the sidebar to create a &ldquo;tree view&rdquo; of the directory by clicking the folder icon or typing Cmd&rarr;.</dd></dl>            <dl><dt>1C. The <strong>SIDEBAR FOOTER</strong> displays <strong>Stats</strong> for the items in the current directory.</dt>     <dd>Detailed stats can be shown by clicking the footer.</dd>    <dd>There is also a popup menu on the right of the footer with options to display the Sidebar directory or the raw directory index in the Content Pane.</dd></dl>            <dl><dt>2. The <strong>CONTENT PANE</strong> displays the selected sidebar item.</dt>    <dd>The content pane can be focused by tabbing from the sidebar or clicking. Links in HTML files can be navigated via the tab key.</dd>    <dd>Clicking the title of the content pane title reveals an EXTM3U-formatted playlist item for use in an EXTM3U file.</dd></dl>            <dl><dt>Previewed Content</dt></dl>            <dl><dt>Previewed Directories</dt>		<dd>Previewed directories in the Content Pane inherit the sorting and other UI preferences from the Sidebar directory list. They can be navigated independently from the Sidebar via the &ldquo;Parent Directory&rdquo; link in the header or Cmd-Up Arrow.</dd>		<dd>An item in the content pane header allows previewed directories to be opened into the sidebar.</dd>    <dd>A selected item can be previewed by pressing the spacebar. This is similar to the &ldquo;quicklook&rdquo; function in MacOS.</dd>    <dd>Double-clicking a selected directory list item or typing Cmd-Down Arrow will open it in the content pane, replacing the previewed directory. Closing the item via the Close Button or Cmd-W will restore the original previewed directory.</dd></dl>            </article>
 		<article><h2 id="shortcuts" class="border_top_x padding_top_1rem"><strong>II. KEYBOARD SHORTCUTS</strong></h2>
 			<ul id="utilities_help" class="info_list background_grey_80 font_size_small border_all padding_0 no_highlight">    <li class="info_list_header display_grid align_center bold no_hover no_highlight"><span class="col_1">SHORTCUT</span><span class="col_2">DESCRIPTION</span></li>    <li class="display_grid no_hover no_highlight"><span class="col_1"><kbd>&uarr;</kbd> or <kbd>&darr;</kbd></span><span class="col_2">Select the previous/next sidebar item or previewed directory item.<br />If audio is playing, and the previous/next file is also audio, the file will be highlighted but not loaded in the audio player; press <kbd>return</kbd> to load it.</span></li>    <li class="display_grid no_hover no_highlight"><span class="col_1"><kbd>&larr;</kbd> or <kbd>&rarr;</kbd></span><span class="col_2">Select prev/next item of the same kind as the current selection.<br />If current selection is a media file, select and begin playback of the next media item.</span></li>    <li class="display_grid no_hover no_highlight"><span class="col_1"><kbd>&#8997;</kbd><kbd>&larr;</kbd> or <kbd>&#8594;</kbd></span><span class="col_2">Skip media &plusmn;10 seconds.</span></li>    <li class="display_grid no_hover no_highlight"><span class="col_1"><kbd>&#8997;</kbd><kbd>&#8679;</kbd><kbd>&larr;</kbd> or <kbd>&rarr;</kbd></span><span class="col_2">Skip media &plusmn;30 seconds.</span></li>    <li class="display_grid no_hover no_highlight"><span class="col_1"><kbd>&#8984;</kbd><kbd>&uarr;</kbd></span><span class="col_2">Go to parent directory.</span></li>    <li class="display_grid no_hover no_highlight"><span class="col_1"><kbd>&#8984;</kbd><kbd>&darr;</kbd></span><span class="col_2">Go to selected sidebar directory.</span></li>    <li class="display_grid no_hover no_highlight"><span class="col_1"><kbd>&#8984;</kbd><kbd>&rarr;</kbd></span><span class="col_2">Open selected sidebar directory as subdirectory.</span></li>    <li class="display_grid no_hover no_highlight"><span class="col_1"><kbd>&#8984;</kbd><kbd>&larr;</kbd></span><span class="col_2">1. Close selected subdirectory, or <br />2. jump from selected subdirectory item to parent directory, or <br />3. jump up to closest open subdirectory, or <br />4. jump up to top of directory list.</span></li>    <li class="display_grid no_hover no_highlight"><span class="col_1"><kbd>&#8679;</kbd><kbd>&uarr;</kbd> or <kbd>&darr;</kbd> or <kbd>&larr;</kbd> or <kbd>&rarr;</kbd></span><span class="col_2">Select multiple sidebar items: only works if a directory, image, or font is selected. Multiple images and fonts will open a grid view in the content pane.</span></li>    <li class="display_grid no_hover no_highlight"><span class="col_1"><kbd>&#8679;</kbd><kbd>Click</kbd></span><span class="col_2">Select a range of sidebar items: directories, images, or fonts only. Multiple images and fonts will open a grid view in the content pane.</span></li>    <li class="display_grid no_hover no_highlight"><span class="col_1"><kbd>Escape</kbd></span><span class="col_2">Close menus and help, unfocus textareas and content pane, etc.</span></li>    <li class="display_grid no_hover no_highlight"><span class="col_1"><kbd>Return</kbd></span><span class="col_2">Open selected sidebar directory, select file, or pause/play media.</span></li>    <li class="display_grid no_hover no_highlight"><span class="col_1"><kbd>Space</kbd></span><span class="col_2">Pause/Play media files (if media player loaded).<br />&ldquo;Quicklook&rdquo; selected content pane directory list item.</span></li>    <li class="display_grid no_hover no_highlight"><span class="col_1"><kbd>&#8984;</kbd><kbd>A</kbd></span><span class="col_2">Select all sidebar items of selected type; works with dirs, images, and fonts. Images and fonts will open a grid view in the content pane.</span></li>    <li class="display_grid no_hover no_highlight"><span class="col_1"><kbd>Tab</kbd></span><span class="col_2">Toggle focus between sidebar and content pane.</span></li>    <li class="display_grid no_hover no_highlight"><span class="col_1"><kbd>&#8984;</kbd><kbd>&#8679;</kbd><kbd>D</kbd></span><span class="col_2">Toggle file details (size, date modified, kind) in some index page types.</span></li>    <li class="display_grid no_hover no_highlight"><span class="col_1"><kbd>&#8984;</kbd><kbd>E</kbd></span><span class="col_2">Toggle main menu.</span></li>    <li class="display_grid no_hover no_highlight"><span class="col_1"><kbd>&#8984;</kbd><kbd>&#8679;</kbd><kbd>E</kbd></span><span class="col_2">Show text editor.</span></li>    <li class="display_grid no_hover no_highlight"><span class="col_1"><kbd>&#8984;</kbd><kbd>G</kbd></span><span class="col_2">Show or reload image or font grids.</span></li>    <li class="display_grid no_hover no_highlight"><span class="col_1"><kbd>&#8984;</kbd><kbd>&#8679;</kbd><kbd>I</kbd></span><span class="col_2">Toggle invisible files.</span></li>    <li class="display_grid no_hover no_highlight"><span class="col_1"><kbd>&#8984;</kbd><kbd>&#8679;</kbd><kbd>J</kbd></span><span class="col_2">Go to item by row number.</span></li>    <li class="display_grid no_hover no_highlight"><span class="col_1"><kbd>&#8984;</kbd><kbd>&#8679;</kbd><kbd>O</kbd></span><span class="col_2">Open selected sidebar item in new window/tab.</span></li>    <li class="display_grid no_hover no_highlight"><span class="col_1"><kbd>&#8984;</kbd><kbd>R</kbd></span><span class="col_2">Reload grids and previewed content, reset scaled images/fonts, reset media files to beginning.</span></li>    <li class="display_grid no_hover no_highlight"><span class="col_1"><kbd>&#8984;</kbd><kbd>&#8997;</kbd><kbd>W</kbd></span><span class="col_2">Close previewed content.</span></li>    <li class="display_grid no_hover no_highlight"><span class="col_1"><kbd>&#8984;</kbd><kbd>&#8679;</kbd><kbd>&lt;</kbd> or <kbd>&gt;</kbd></span><span class="col_2">Scale preview items and grids.</span></li>    <li class="display_grid no_hover no_highlight"><span class="col_1"><kbd>&#8984;</kbd><kbd>\\</kbd></span><span class="col_2">Toggle sidebar.</span></li>    <li class="display_grid no_hover no_highlight"><span class="col_1"><kbd>&#8679;</kbd><kbd>&#8984;</kbd><kbd>\\</kbd></span><span class="col_2">Toggle text editor split view.</span></li></ul>            </article>
@@ -892,7 +890,7 @@
 		#content_body.has_quicklook .content_el.has_content, #content_body.has_quicklook .content_el:has(.has_content), #content_body.has_quicklook #content_pane.has_audio #content_audio_container
 																																			{ display:flex; z-index:1; }
 		#content_body.has_quicklook #content_pane.has_audio #content_header				{ margin:auto; }		#content_body.has_quicklook #content_pane.has_audio #audio_wrapper	{ padding:0 6px; }
-		#content_body.has_quicklook #content_pane.has_audio #content_audio_container	{ padding:0; }			#content_body.has_quicklook #content_pane.has_audio #audio_options	{ display:none; }																																	
+		#content_body.has_quicklook #content_pane.has_audio #content_audio_container	{ padding:0; }			#content_body.has_quicklook #content_pane.has_audio #audio_options	{ display:none; }
 		#content_body.has_quicklook #content_container:has(#content_font.has_content, #content_pdf.has_content,#content_iframe.has_content),#content_body.has_quicklook #content_pane[data-content="has_ignored"] #content_container																															{ height:50%; flex-basis:unset; }
 		#content_body.has_quicklook #content_container:has(#content_image.has_content)														{ display:table; flex-basis:unset; }
 		#content_body.has_quicklook #content_video.has_content																				{ position:static; }
@@ -1008,7 +1006,7 @@
 		.cuesheet_track_list_container								{ background-image:${get_SVG_UI_File_Icon("file_icon_playlist")}; background-repeat:no-repeat; background-size:18px; background-color:inherit; display:none; }
 		.cuesheet_track_list_container:hover > div, .cuesheet_track_list_container.has_menu > div					{ display:flex; flex-direction:column; margin-top:-1px; overflow:hidden; max-height:100%; }
 		.cuesheet_track_list_container:hover .cuesheet_track_list, .cuesheet_track_list_container.has_menu, .cuesheet_track_list, #content_grid a	{ display:block; }
-		#cuesheet_track_list_container_audio						{ width:32px; background-position:center; }		
+		#cuesheet_track_list_container_audio						{ width:32px; background-position:center; }
 		#cuesheet_track_list_container_video						{ width:24px; background-position:top left; }
 		#cuesheet_track_list_container_audio > div					{ padding-top:13px; }							#cuesheet_track_list_container_video > div { padding-top:10px; }
 		.cuesheet_track_list										{ overflow:scroll; }
@@ -1410,7 +1408,7 @@
 			if ( /audio|video/.test(item_sort_kind) ) {	media_count += 1;																				// if media item...
 				let media_kind = item_sort_kind, media_item_id = parent_id + connector + is_playlist + 'rowid-'+ ( prepped_index.length - i), is_subdir = ( /subdirectory/.test(window.location.search) ? true : false );
 																																						// get media duration, not in utility subdir (limit to 1000 calls):
-				if ( media_count < 1000 && is_subdir !== true ) { getMediaDuration( item_link, media_kind, media_item_id, is_subdir ); } else { new_item = new_item.replace(/data-duration="">/,'data-duration="NaN">'); } 
+				if ( media_count < ( isMobileOS() ? 100 : 1000 ) && is_subdir !== true ) { getMediaDuration( item_link, media_kind, media_item_id, is_subdir ); } else { new_item = new_item.replace(/data-duration="">/,'data-duration="NaN">'); }
 			}
 			new_index_items.push(new_item);																												// add item to index items
 			body_classes.add(item_info[5].join(' '));																									// add item classes to body_classes
@@ -1542,17 +1540,40 @@
 		let formattedTime = [hours,minutes,seconds].map( v => v < 10 ? "0" + v : v ).filter( (v,i) => v !== "00" || i > 0 ).join(":");
 			formattedTime = formattedTime.replace(/^0/m,'');	return formattedTime;																// remove initial 0 and return formatted time
 	};
-	async function fetchMediaDuration(link,kind) {																							// ===> ASYNC FETCH MEDIA DURATION
+	const Media_Duration_Queue = { active:0, items:[], timer:null };
+	function getMediaDurationConcurrency() { return ( isMobileOS() ? 1 : 4 ); }
+	function scheduleMediaDurationQueue() {
+		if ( Media_Duration_Queue.timer !== null ) { return; }
+		if ( 'requestIdleCallback' in window ) {
+			Media_Duration_Queue.timer = window.requestIdleCallback(() => { Media_Duration_Queue.timer = null; drainMediaDurationQueue(); },{timeout:1000});
+		} else {
+			Media_Duration_Queue.timer = window.setTimeout(() => { Media_Duration_Queue.timer = null; drainMediaDurationQueue(); },50);
+		}
+	}
+	function drainMediaDurationQueue() {											// ===> DRAIN MEDIA DURATION QUEUE without flooding mobile Safari
+		while ( Media_Duration_Queue.active < getMediaDurationConcurrency() && Media_Duration_Queue.items.length > 0 ) {
+			let item = Media_Duration_Queue.items.shift();
+			Media_Duration_Queue.active++;
+			fetchMediaDuration(item.link,item.media_kind).then( duration => setMediaDuration(item.id,item.media_kind,duration) ).catch( () => {
+				if ( item.id?.indexOf('playlist') && hasClass('body','has_playlist') || !item.id?.indexOf('playlist') && !hasClass('body','has_playlist') ) { setMediaDuration(item.id,item.media_kind,Number.NaN); }
+			}).finally( () => {
+				Media_Duration_Queue.active--;
+				if ( Media_Duration_Queue.items.length > 0 ) { scheduleMediaDurationQueue(); }
+			});
+		}
+	}
+	async function fetchMediaDuration(link,kind) {																					// ===> ASYNC FETCH MEDIA DURATION
 		return new Promise((resolve, reject) => {
 			const media = ( kind === 'audio' ? new Audio() : document.createElement('video') );
-			media.addEventListener('loadedmetadata', () => { resolve(media.duration); });		media.addEventListener('error', reject);	media.src = link.replace(/\&amp;/g,'&');
+			media.preload = 'metadata';
+			media.addEventListener('loadedmetadata', () => { resolve(media.duration); media.removeAttribute('src'); media.load(); }, {once:true});
+			media.addEventListener('error', reject, {once:true});
+			media.src = link.replace(/\&amp;/g,'&');
 		});
 	}
-	async function getMediaDuration(link,media_kind,id) {																					// ===> ASYNC GET MEDIA DURATION (not utility iframe subdir items; see buildNewIndex)
-		try { const duration = await fetchMediaDuration(link,media_kind);	setMediaDuration( id,media_kind,duration );								// await media duration; set media duration
-		} catch (error) {
-			if ( id?.indexOf('playlist') && hasClass('body','has_playlist') || !id?.indexOf('playlist') && !hasClass('body','has_playlist') ) { setMediaDuration( id,media_kind,Number.NaN ); }		// on error, set dur = NaN
-		}
+	async function getMediaDuration(link,media_kind,id) {																			// ===> QUEUE MEDIA DURATION (not utility iframe subdir items; see buildNewIndex)
+		Media_Duration_Queue.items.push({link,media_kind,id});
+		if ( Media_Duration_Queue.active < getMediaDurationConcurrency() ) { scheduleMediaDurationQueue(); }
 	}
 	// SET MEDIA DURATIONS
 	function getThisDuration(id) { let item_dur = Number(getData('#'+id +' .dirlist_item_media_duration','duration') );	if ( id !== undefined ) { return ( isNaN(item_dur) ? Number.NaN : item_dur ); } } // return dur or NaN
@@ -1800,8 +1821,8 @@
 																		main_content = getEl('#texteditor_raw_pane')?.value;
 																		break;	// get text content for optional processing (cuetxt)
 					case kind === 'htm':
-						main_content = getEl('html').outerHTML; addClass('body','is_html'); 
-						if ( document.head.querySelector('#supercharged_styles') === null ) { 
+						main_content = getEl('html').outerHTML; addClass('body','is_html');
+						if ( document.head.querySelector('#supercharged_styles') === null ) {
 							getEl('head').insertAdjacentHTML('beforeend','<style id="supercharged_styles">body.theme_dark img { filter:invert(1) hue-rotate(180deg) saturate(0.5) !important; }</style>');
 						}
 						if ( getCurrentUIPref('theme') === 'dark' ) { addClass('body','theme_dark'); } else { removeClass('body','theme_dark'); }		// nobreak; if html file, get innerHTML
@@ -1923,8 +1944,8 @@
 	function initCuesheetEvents() {																																	// ===> INIT CUESHEET EVENT LISTENERS
 		getEls('.cuesheet_track_list_container').forEach( el => el.onclick = function(e)				{ e.stopPropagation(); menuShow(e,el.id); el.classList.toggle('has_menu'); });	// don't focus content on click
 		getEls('.cuesheet_track_list_container li')?.forEach( el => el.onclick = function(e)			{ e.stopPropagation();
-			menuShow(e,el.id); cueSheetMenuUpdate(); addClass('body','focus_content'); el.closest('nav').querySelector('.cuesheet_track_list').focus(); 
-		});		
+			menuShow(e,el.id); cueSheetMenuUpdate(); addClass('body','focus_content'); el.closest('nav').querySelector('.cuesheet_track_list').focus();
+		});
 			// update the menu on track click
 		getEls('.cuesheet_track_list_container')?.forEach( el => el.onmouseenter = function(e)			{ menuShow(e,el.id); });											// show track list on mouseenter
 		getEl('.media_player[src]')?.addEventListener("timeupdate",cueSheetMenuUpdate);																						// update cuesheet menu selected track and title
@@ -1953,7 +1974,7 @@
 	function initSubframeEvents() { if ( window.parent !== window.top ) { getEl('#content_body').addEventListener('click',function(e) { e.preventDefault(); e.stopPropagation(); }); } }	// prevent events in quicklook
 	function initTextEditorEvents() { let preview = getEl('#texteditor_styled_pane');																	// ===> INIT TEXT EDITOR EVENT LISTENERS
 		getEls('#content_texteditor, #content_texteditor *, #texteditor_styled_pane *').forEach( el => el.onclick = function(e)	{ let el_id;									// focus texteditor on click
-			e.stopPropagation(); el_id = (el.closest('#texteditor_styled_pane') !== null ? '#texteditor_styled_pane' : el.id); focusEl(el_id); if ( !isTopWindow() ) { messageSend('top_body','focus_iframe'); } 
+			e.stopPropagation(); el_id = (el.closest('#texteditor_styled_pane') !== null ? '#texteditor_styled_pane' : el.id); focusEl(el_id); if ( !isTopWindow() ) { messageSend('top_body','focus_iframe'); }
 		});
 		getEls('#toolbar_buttons .toggle_UI_pref').forEach( el => el.onmouseup = function(e)			{ uiPrefToggleOnClick(e,el.id); });								// text editing UI is not in DOM on page load;
 		getEl('#texteditor_toolbar').onmousedown = function(e)											{ e.preventDefault(); };										// prevent textarea from losing focus if sidebar clicked
@@ -2148,7 +2169,7 @@
 					case menu_el.classList.contains('selected'): mediaPlayPause();																								break; // play/pause if already selected
 					default: track = getEl('#'+id);																																// otherwise select new cuesheet track list item
 						media_el = track.closest('nav').id.split('_').reverse()[0]; time = track.dataset.position;								// get the media type from the cuesheet menu nav; get position from track dataset
-						addRemoveClassSiblings('#'+ id,'selected');						
+						addRemoveClassSiblings('#'+ id,'selected');
 						if ( time < getEl('#content_'+media_el).duration ) { getEl('#content_'+media_el).currentTime = time; }													//
 						setCueSheetTrackTitle(id,media_el);																														// set cuesheet track title
 					}
@@ -2189,8 +2210,8 @@
 	function iframeClickLink(e,id,link) { let url, kind;																					// ===> IFRAME CLICK LINKS from html files
         if ( !link.startsWith('#') ) { url = newURL(link); if ( e !== null ) { e.preventDefault(); } }												// if link is not a link fragment, create url, prevent default
 		switch(true) {
-			case link.startsWith('#'):	
-				( document.getElementById(link.slice(1))?.scrollIntoView({ behavior:'smooth', block:'start', inline:'nearest' }) 
+			case link.startsWith('#'):
+				( document.getElementById(link.slice(1))?.scrollIntoView({ behavior:'smooth', block:'start', inline:'nearest' })
 				|| document.querySelector('[name="'+ link.slice(1) +'"]')?.scrollIntoView({ behavior:'smooth', block:'start', inline:'nearest' }) );  break;	// allow default link fragment behavior
 			case url.href.startsWith('file:///?'):	case url === undefined:																	break;
 			case id === 'tbody':		window.location = link + '?&show_directory_source=true';											break;	//
@@ -2231,7 +2252,7 @@
 		switch(true) {
 			case pref_id === 'audio_player_on_top':																	audioPlayerPositionToggle();							break;
 			case pref_id === 'show_image_thumbnails':																uiPrefImgThumbsToggle(new_value[1]);	send = 'true';	break;
-			case pref_id === 'show_media_name_in_window_title':														toggleMediaNameInWindowTitle('toggle');					break;	// nobreak;														
+			case pref_id === 'show_media_name_in_window_title':														toggleMediaNameInWindowTitle('toggle');					break;	// nobreak;
 			case ( /texteditor_|text_editing/.test(pref_id) ):														textEditorTogglePrefs(pref_id);			send = 'true';	break;	// Text Editor Preferences
 			case !hasClass('#content_body','show_details_false') && pref_id === 'show_details' && !isTopWindow():																	// nobreak; hide iframe details on first toggle
 			case new_value[1] === 'false':									addClass('body',pref_id +'_false');	searchParamSet(pref_id,'false');			send = 'true';	break;
@@ -2263,7 +2284,7 @@
 		new_value = new_value.join('_');																										// "theme_[light|dark]"
 		removeClass('body','theme_dark theme_light'); addClass('body',new_value);																// set top level theme classes
 		if ( new_value === 'theme_light' )	{ searchParamDelete( 'theme' ); } else { searchParamSet( 'theme','dark' ); }						// set top level theme search param
-		switch( isTopWindow() ) { 
+		switch( isTopWindow() ) {
 			case getContentPaneData() === 'has_htm':
 				switch(true) {
 					case new_value === 'theme_light': iframe_src = iframe_src.replace(/\?theme=dark/,'');	break;
@@ -2298,33 +2319,41 @@
 		if ( Number(value) < 100 ) { document.documentElement.style.width = Math.round(10000/Number(value))+'%'; } else { document.documentElement.style.removeProperty('width'); }		// scale the html element if value < 1
 		if ( bool === true ) { setData('#ui_scale .menu_item','value',value+'%'); getEl('#ui_scale_input').value = value; }																// set the input on load
 	}
-	function uiPrefImgThumbsToggle(bool) {																									// ===> TOGGLE UI PREF IMG THUMBS
-		let image_files = getEls('.dirlist_item.image'), current_background_image, max_count = 2000;												// Add/remove image thumbnails as background icons
+	let Image_Thumbs_Observer;
+	function uiPrefImgThumbsToggle(bool) {																							// ===> TOGGLE UI PREF IMG THUMBS
+		let image_files = getEls('.dirlist_item.image'), current_background_image, max_count = ( isMobileOS() ? 250 : 2000 );					// Add/remove image thumbnails as background icons
 		switch(true) {
 			case bool === 'false':	addClass('body','show_image_thumbnails_false');	searchParamSet('show_image_thumbnails','false');				break;
-			default:				removeClass('body','show_image_thumbnails_false');  searchParamDelete('show_image_thumbnails');  
+			case image_files.length > max_count:
+				addClass('body','show_image_thumbnails_false');	searchParamSet('show_image_thumbnails','false');				break;	// avoid asking iOS Safari to schedule hundreds/thousands of image downloads at startup
+			default:				removeClass('body','show_image_thumbnails_false');  searchParamDelete('show_image_thumbnails');
 		}
 		image_files.forEach( (image ) => {
-			current_background_image = image.querySelector('a .has_icon_before_before').style.backgroundImage;										// get the current background_image, save for future toggle
-			switch(true) {																															// toggle thumbnail display
-				case bool === 'false':																												// show default icon, don't remove existing thumbnail
-					image.querySelector('a .has_icon_before_before').style.backgroundImage = get_SVG_UI_File_Icon('file_icon_image') +','+ current_background_image;	// only first background image is visible
+			let thumb = image.querySelector('a .has_icon_before_before'), link = image.querySelector('a');
+			if ( thumb === null || link === null ) { return; }
+			current_background_image = thumb.style.backgroundImage;									// get the current background_image, save for future toggle
+			switch(true) {																											// toggle thumbnail display
+				case bool === 'false': case image_files.length > max_count:											// show default icon, don't remove existing thumbnail
+					thumb.style.backgroundImage = get_SVG_UI_File_Icon('file_icon_image') +','+ current_background_image;	// only first background image is visible
 					break;
-				default:																															// remove default image icon or load image thumbnail
-					image.querySelector('a .has_icon_before_before').dataset.image_url		= 'url("'+ image.querySelector('a').href +'")';  lazyLoadImageThumbs();
+				default:																													// remove default image icon or load image thumbnail
+					thumb.dataset.image_url = 'url("'+ link.href +'")';
 			}
 		});
+		if ( bool !== 'false' && image_files.length <= max_count ) { lazyLoadImageThumbs(); }
 	}
 	function lazyLoadImageThumbs() {
 		if ( getCurrentUIPref('show_image_thumbnails') === 'false' ) { return }
-		const handleIntersection = (entries) => {
-			entries.map((entry) => {
+		const thumbs = document.querySelectorAll('.dirlist_item.image a .has_icon_before_before[data-image_url]');
+		if ( !('IntersectionObserver' in window) ) { thumbs.forEach( thumb => thumb.style.backgroundImage = thumb.dataset.image_url ); return; }
+		if ( Image_Thumbs_Observer !== undefined ) { Image_Thumbs_Observer.disconnect(); }
+		const handleIntersection = (entries,observer) => {
+			entries.forEach((entry) => {
 				if ( entry.isIntersecting ) { entry.target.style.backgroundImage = entry.target.dataset.image_url; observer.unobserve(entry.target); }
 			});
 		}
-		const observer = new IntersectionObserver( handleIntersection,{ rootMargin: "100px" });
-		const thumbs = document.querySelectorAll('.dirlist_item.image a .has_icon_before_before');
-		thumbs.forEach(thumb => observer.observe(thumb));
+		Image_Thumbs_Observer = new IntersectionObserver( handleIntersection,{ rootMargin: ( isMobileOS() ? '40px' : '100px' ) });
+		thumbs.forEach(thumb => Image_Thumbs_Observer.observe(thumb));
 	}
 	function uiPrefSortToggle(pref_id) {																									// ===> TOGGLE UI SORT PREF
 		let current_sort_by =		 getCurrentUIPref('sort_by'),			new_sort_by = pref_id.split('_').reverse()[0];
@@ -2455,7 +2484,7 @@
 						sorted = [...sorted_dirs,...sorted_files];																							//	sorted = sorted_dirs.concat(sorted_files); // ...dirs before files
 						break;
 					case sort_direction === 'descending':																									// sort descending...
-						if ( sorted_dirs[0] !== undefined && !/sort_by_name|sort_by_kind|sort_by_ext/.test(sort_type) ) { 
+						if ( sorted_dirs[0] !== undefined && !/sort_by_name|sort_by_kind|sort_by_ext/.test(sort_type) ) {
 							sorted_dirs[sorted_dirs.length - 1] = sorted_dirs[sorted_dirs.length - 1].replace(/class=\"/,'class="border_top ');				// add border class
 						}
 						sorted = [...sorted_dirs,...sorted_files];																							// ...else files before dirs
@@ -2481,8 +2510,8 @@
 	}
 	// ===> SHOW INDIVIDUAL CONTENT TYPES
 	//============================// MEDIA
-	function showMedia(kind,id,src,file_name,bool) { let title = ''; 
-		removeAttr('#content_audio_container,#content_video','data-track_title'); 
+	function showMedia(kind,id,src,file_name,bool) { let title = '';
+		removeAttr('#content_audio_container,#content_video','data-track_title');
 		getEl('.media_player[src]')?.removeEventListener('timeupdate',cueSheetMenuUpdate);	getEl('.media_player[src]')?.removeEventListener("click",cueSheetMenuUpdate); // remove cuesheet attrs and event listener
 		switch(kind) {
 			case 'audio':
@@ -2502,14 +2531,14 @@
 						title = getEl('#'+id).querySelector('a').innerText; addClass('#content_pane','has_audio'); removeClass('#content_pane','has_iframe_audio'); src = getEl('#'+id).querySelector('a').getAttribute('href');
 						cuesheetGet(id,src,'audio');																										// get cuesheet
 				}
-				if ( hasClass('body','audio_player_on_top_false') ) { audioPlayerPositionToggle('reset'); }									
+				if ( hasClass('body','audio_player_on_top_false') ) { audioPlayerPositionToggle('reset'); }
 				if ( hasClass('body','has_quicklook') ) { closeContent(); }
 				autoLoadCoverArt(bool,id);			setAttr('#content_audio','src', src ); setAttr('#content_audio','data-src_id', id );
 				getEl('#content_audio_title span').innerText = title;		removeClass('#content_audio_playlist_item','has_content');													break;
 			case 'close_audio':																															// CLOSE AUDIO; pause media; needed in each case, not outside switch
 				getEl('#content_audio_title span').innerHTML = '';			removeAttr('#content_audio','data-src_id');						removeAttr('#content_container','style');
 				removeClass('body','is_playing is_paused');					removeClass('.dirlist_item.audio_loaded','audio_loaded');		removeClass('#content_pane','has_audio has_iframe_audio has_audio_error');
-				removeClass('#content_audio_playlist_item','has_content');	messageSend('iframe','close_iframe_audio');						mediaPlayPause('close'); 
+				removeClass('#content_audio_playlist_item','has_content');	messageSend('iframe','close_iframe_audio');						mediaPlayPause('close');
 				document.title = 'Index of: '+ decodeURIComponentSafe(window.location.pathname);																						break;
 			case 'video':													setAttr('#content_video','data-src_id', id );								// SHOW VIDEO
 				showMedia('close_audio'); cuesheetGet(id,src,'video');		setData('#content_pane','content','has_video');					addClass('#content_video','has_content');	break;
@@ -2522,8 +2551,8 @@
 		let document_title = ( / :: /.test(document.title) ? document.title.split(' :: ')[1] : document.title );														// add playing media item to document.title
 		let file_name = getEls('.dirlist_item.media.audio_loaded,.dirlist_item.media.content_loaded')[0].dataset.title || '';											// nobreak
 		switch(true) {
-			case ( /close/.test(action) ): 											document_title = document.title;											break;	
-			case action === 'toggle': 
+			case ( /close/.test(action) ): 											document_title = document.title;											break;
+			case action === 'toggle':
 				if ( getCurrentUIPref('show_media_name_in_window_title') === 'true' ) {
 					searchParamSet('show_media_name_in_window_title','false');		document.body.classList.add('show_media_name_in_window_title_false');				// toggle off; add searchParam and body class
 				} else {
@@ -2545,9 +2574,9 @@
 					default:													shuffle_list.push(id); shuffle_list = mediaShuffleArray( shuffle_list );					// else add re-checked items to shufflelist
 				}																																					break;
 			default: shuffle_list = mediaShuffleArray( mediaGetUpdatedShuffleArray() );																// reset shufflelist when shuffle option checked
-				if ( !mediaIsPlaying('content_audio') || !mediaIsPlaying('content_video') ) { 
+				if ( !mediaIsPlaying('content_audio') || !mediaIsPlaying('content_video') ) {
 					showThis(shuffle_list[0]); shuffle_list.shift();																				// if nothing playing, load first item from list and remove it
-				} else { 
+				} else {
 					shuffle_list = shuffle_list.filter( shuffle_item_id => shuffle_item_id !== getEls('.dirlist_item.media.audio_loaded').id );		// else just remove the current item from the shuffle list
 				}
 		}
@@ -2698,9 +2727,9 @@
 				for ( track_command of track ) {																								// and for each command in the track
 					if ( track_command.match(commands_arr[i]) ) {
 						track_command = track_command.trim().replace(/^(performer|title|index\s+\d+)\s*/mgi,'').replace(/^('|\"|\&quot;)|('|\"|\&quot;)$/mgi,'');	// prep the displayed track information
-						if ( commands_arr[i] === 'INDEX' ) {																		// format INDEX command; N.B.: cuesheet time format = mm:ss:ff (ff = frames @ 75fr/sec): 
+						if ( commands_arr[i] === 'INDEX' ) {																		// format INDEX command; N.B.: cuesheet time format = mm:ss:ff (ff = frames @ 75fr/sec):
 							previous_position = ( position || getEl('.dirlist_item.media.content_loaded .dirlist_item_media_duration')?.dataset.duration); // first track won't have position, so use length of audio file
-							display_time = track_command.replace(/INDEX\s+\d+\s+/,'');	
+							display_time = track_command.replace(/INDEX\s+\d+\s+/,'');
 							index = display_time.split(':').reverse();				// split the display time
 							position = index[0]/75 + index[1]*1 + index[2]*60;		// sum the parts to get total seconds for audio position
 							track_command = getFormattedDuration(Math.abs(previous_position - position)) +'</span><span class="cue_position">'+getFormattedDuration(position);	// display duration of track
@@ -2724,7 +2753,7 @@
 	}
 	function cueSheetMenuUpdate() { let media_el = getEl('.media_player[src]');																				// UPDATE CUESHEET MENU: continuously on timeupdate
 		let current_time = media_el?.currentTime;
-		let current_track = (getEl('.cuesheet_track.selected') !== null ? getEl('.cuesheet_track.selected') : getEl('#cuesheet_item_1') ); 
+		let current_track = (getEl('.cuesheet_track.selected') !== null ? getEl('.cuesheet_track.selected') : getEl('#cuesheet_item_1') );
 		let current_position = current_track?.dataset.position, next_track = current_track?.nextElementSibling, next_position = next_track?.dataset.position, track_title, bool;
 		switch(true) {
 			case current_time >= current_position && current_time < next_position: bool = true; if ( !current_track.classList.contains('selected') ) { current_track.classList.add('selected'); } break; // current track playing
@@ -3003,7 +3032,7 @@
 			default:
 				removeClass('#show_grid_btn','has_grid');																				// remove #show_grid_btn button class
 				if ( id === 'close' ) { removeClass('#content_pane','has_hidden_grid'); }
-				removeClass('#content_pane','has_image_grid has_font_grid has_zoom_image');	
+				removeClass('#content_pane','has_image_grid has_font_grid has_zoom_image');
 				removeAttr('#content_pane','data-content');																				// remove data-content
 				removeAttr('#content_title span','data-grid_item_count');																// remove data-grid_item_count
 				removeAttr('#content_grid,.image_grid_item img','style');																// remove styles
@@ -3018,7 +3047,7 @@
 			case elExists('#'+id):				addRemoveClassSiblings('#'+ id,'selected','selected'); 	removeClass('.grid_item.selected','selected');
 												addClass('.grid_item[data-id="'+id+'"','selected'); getEl('#'+id).click();				break;	// normal grid item display
 			case !elExists('#'+id):				showThis('',false,true,[src,kind]);														break;	// show grid items from closed subdirectory
-		}		
+		}
 		focusEl('#content_pane .has_content');
 	}
 	// ***** IMAGE/FONT GRID SETUP
@@ -3221,7 +3250,7 @@
 		let link = ( link_content?.match(regex)?.[1] || link_content?.match(regex)?.[2] );
 		let link_class = '', link_target = '', formatted_link;		// get the link; define link elements
 		switch(true) {
-			case kind === 'remote_webloc' && window_protocol !== 'file:': content = content.trim().replace(/^URL[\s\W\t\n\r]+/i,''); 
+			case kind === 'remote_webloc' && window_protocol !== 'file:': content = content.trim().replace(/^URL[\s\W\t\n\r]+/i,'');
 				getEl('#content_iframe').src = "data:text/html;charset=utf-8," + escape(`<html><head><meta name="color-scheme" content="light dark"><style id="texteditor_styles">${texteditor_styles}</style><style id="global_styles">${global_styles}</style><style id="utilities_styles">${utilities_styles}</style></head><body id="content_body" class="is_text text_editing_enable_true texteditor_split_view_true texteditor_sync_scroll_true texteditor_view_styled theme_${getCurrentUIPref('theme')} is_link texteditor_split_view_false text_editing_enable_false"><div id="content_texteditor" class="background_grey_85 margin_0 padding_0 width_100 height_100 overflow_hidden position_absolute z_index_1 flex_column flex_grow_1 display_none"><div id="text_container" class="display_flex flex_grow_1 overflow_hidden"><div id="texteditor_styled_pane" class="texteditor_pane margin_0 border_0 line_height_1_2 text_color_default height_100 display_none markdown_body z_index_1"><a href="${ content }">${ content }</a></div></div></div></body></html>`);
 										return;
 			case window_protocol === 'file:' && !link?.startsWith('file'): getEl('.dirlist_item.selected').classList.add('non_local'); link_class = ' class="non_local"'; link_target = ' target="_blank"'; break;
@@ -3463,7 +3492,7 @@ console.log(newURL(args[1]));
 				els = ( el_index > selected_el_index ? els.slice(selected_el_index,el_index + 1) : els.slice(el_index,selected_el_index + 1) );			// select up or down from selected item
 				els.forEach( el => selectMultipleItems(null,el.id) );
 				break;
-			case e.key === 'a':	e.preventDefault(); 														// cmd + a: select all	
+			case e.key === 'a':	e.preventDefault(); 														// cmd + a: select all
 				if ( isTopWindow() ) { closeContent(); }
 				kind = ( getEls('.dirlist_item.dir.selected,.dirlist_item.app.selected,.dirlist_item.image.selected,.dirlist_item.font.selected')[0]?.dataset.kind || 'dir');
 				getEls('.dirlist_item.selected,.dirlist_item.content_loaded').forEach( el => el.classList.remove('selected','content_loaded') );
@@ -3528,7 +3557,7 @@ console.log(newURL(args[1]));
 				setAttr('#content_pane','data-content','has_'+ kind);																					// add data.content to content_pane
 				setAttr('#content_pane','data-loaded_id',id);																							// hide all iframe content until loaded, show loading spinner:
 				if ( kind !== 'video' ) { removeAttr('#content_video','data-src_id'); }
-				if ( /content_iframe/.test(content_el_id) && !/ignored/.test(kind) ) { 
+				if ( /content_iframe/.test(content_el_id) && !/ignored/.test(kind) ) {
 					setAttr('#content_pane','data-loaded','unloaded'); } else { setAttr('#content_pane','data-loaded','loaded'); }
 		}
 	}
@@ -3545,7 +3574,7 @@ console.log(newURL(args[1]));
 		if ( kind === 'image' ) { imageSetDimensions(); }																									// set image dimensions if necessary
 	}
 	function iframeLoadedFunctions(id,kind,file_name,content) {	let focus_el;												// ===> IFRAME LOADED FUNCTIONS
-		setAttr('#content_pane','data-loaded','loaded'); 
+		setAttr('#content_pane','data-loaded','loaded');
 		clearTimeout(setWarningItemNotLoadedID);																					// set data-loaded (remove loading spinner)
 		if ( hasAttr('#content_pane','data-iframe_selected_id') ) {																	// select iframe_dirlist selected IFF is iframe_dir
 			messageSend('iframe','select_iframe_item','',getData('#content_pane','iframe_selected_id') );							// tell iframe to reselect original item
@@ -3566,14 +3595,14 @@ console.log(newURL(args[1]));
 		}
 		if ( focus_el !== undefined ) { focusEl(focus_el); }																		// focus element after iframe loaded
 	}
-	
-	
-	
-	
-// TESTING	
+
+
+
+
+// TESTING
 	function fileNotFound(e,id)	{
-		if ( e.type === 'error')	{ 
-			if (id === 'content_audio') { addClass('#content_pane','has_audio_error'); setContentTitle('has_audio_error'); } else { addClass('#content_pane','content_error'); closeContent(); setContentTitle('error'); } 
+		if ( e.type === 'error')	{
+			if (id === 'content_audio') { addClass('#content_pane','has_audio_error'); setContentTitle('has_audio_error'); } else { addClass('#content_pane','content_error'); closeContent(); setContentTitle('error'); }
 		}
 	}
 	function initContentError(id,content_el_id) { if ( id !== 'close' ) { getEl(content_el_id).addEventListener('error',(e) => { fileNotFound(e,content_el_id); }); } }					// ===> INIT CONTENT ERROR
@@ -3590,26 +3619,26 @@ console.log(newURL(args[1]));
 			case kind === 'font':	testFontLoaded(src);			break;
 		}
 	}
-	function setWarningItemNotLoaded(args) { return; 
+	function setWarningItemNotLoaded(args) { return;
 			let src = args?.[0]; let kind = args?.[1];											// Show warning if item is not found; typically after clicking a bad link in an html file
 			let warning_message = "data:text/html;charset=utf-8," + escape(`<!DOCTYPE html><html><head><style>html,body { background:transparent; }</style></head><body style="text-align: center;" id="content_body" class="is_html">  <h1 style="font-family: Georgia, serif; color: #4a4a4a; margin-top: 4em; line-height: 1.5;">Sorry, this page doesn't exist.<br>Please check the URL or go back a page.</h1>  <h2 style="  font-family: Verdana, sans-serif; color: #7d7d7d; font-weight: 300;">404 Error. Page Not Found.</h2>  <button onclick="window.parent.postMessage( {\'messageContent\':\'go_back\'},\'*\')">Go back</button></body></html>`);
 			switch(true) {
 				case ( !/audio|video|font|image|pdf/.test(kind) ):																		// Show warning for iframe items not found
-					setWarningItemNotLoadedID = setTimeout( () => { if ( getEl('#content_pane').dataset.loaded === 'unloaded' ) { 
+					setWarningItemNotLoadedID = setTimeout( () => { if ( getEl('#content_pane').dataset.loaded === 'unloaded' ) {
 						removeClass('#content_pane','has_file');
 						delete getEl('#content_pane').dataset.iframe_selected_id;  delete getEl('#content_pane').dataset.iframe_item_src;
-						setData('#content_pane','loaded','loaded');  setData('#content_pane','content','has_htm');  addClass('#content_iframe','has_content'); 
+						setData('#content_pane','loaded','loaded');  setData('#content_pane','content','has_htm');  addClass('#content_iframe','has_content');
 						getEl('#content_iframe').src = warning_message;
-					} },5000); 
+					} },5000);
 					break;
 				case kind === 'font': testItemLoaded(src,kind);	break;
 				default:
-					//console.log("NOT FOUND");					
-				} 
+					//console.log("NOT FOUND");
+				}
 	}
-// END TESTING	
-	
-	
+// END TESTING
+
+
 	// ===> SHOW THIS ITEM	// file_name = link_info[1], file_ext = link_info[2], kind = link_info[3], item_classes = link_info[4], body_classes = link_info[5], stats_classes = link_info[6];
 	function showThisItem(id,args) {							// ===> SHOW CONTENT // args = [link,kind,selected_id (for iframe dirs/files)] or "close"; bool === false for proper content title for autoload_coverart
 		let link_info = ( /rowid/.test(id) ? ( getLinkInfo( getAttr('#'+ id +' a','href') ) ) : args !== undefined ? getLinkInfo(args[0]) : id );
@@ -3646,8 +3675,8 @@ console.log(newURL(args[1]));
 					case ( /video/.test(kind) ):							if ( getData('#content_video','src_id') !== id ) { showMedia('video',id,src,file_name); break; } else { return; }	// show video
 				}
 				if ( /font|image/.test(kind) && hasContent('grid') )		{ closeGrid('hide'); showContentGridItem(id,getEl("#"+id).querySelector('a').href,getEl("#"+id).dataset.kind); }
-				if ( !hasContent('font_file_glyph') ) { 
-					setContentPaneAttrs(id,kind,content_el_id); setContentElAttrs(id,content_el_id,kind,src,selected_id); setContentTitle(id,kind,file_name,src,bool); initContentError(id,content_el_id); 
+				if ( !hasContent('font_file_glyph') ) {
+					setContentPaneAttrs(id,kind,content_el_id); setContentElAttrs(id,content_el_id,kind,src,selected_id); setContentTitle(id,kind,file_name,src,bool); initContentError(id,content_el_id);
 				}
 		}
 		setWarningItemNotLoaded([src,kind]);
@@ -3658,7 +3687,7 @@ console.log(newURL(args[1]));
 		switch(true) {
 			case window.parent !== window.top:																																	break; // prevent infinite quicklook regression
 			case id === 'close': closeContent(); removeClass('body','has_quicklook'); getEl('#content_pane .selected')?.scrollIntoView({behavior:"smooth",block:"nearest"});	break; // close; scroll grid item into view
-			default:	addClass('body','has_quicklook'); 
+			default:	addClass('body','has_quicklook');
 						showMedia('close_audio');	if (getEl('#'+id).classList.contains('ignored') ) { closeContent(); }	showThis(id);	if ( /audio|video/.test(kind) ) { mediaPlayPause('play'); }
 		}
 	}
@@ -3694,9 +3723,9 @@ console.log(newURL(args[1]));
 		switch(true) {
 			case !hasContent('audio') && !hasContent():										location.reload();								break;	// reload window if no content visible
 			case hasContent('audio ignore'):	getEl('#content_audio').currentTime = 0;	getEl('#content_audio').pause();						// nobreak;  pause audio, reset time to 0
-			case hasContent('video'):			getEl('#content_video').currentTime = 0;	getEl('#content_video').pause();	
+			case hasContent('video'):			getEl('#content_video').currentTime = 0;	getEl('#content_video').pause();
 												refreshMediaDurations('refresh_media_durations');											break;	// pause video, reset time to 0
-		}		
+		}
 		switch(true) {																																// reset other content
 			case hasContent('texteditor'):		case ( /has_\w+list/.test(getClassNames('#top_body')) ):									break;	// do nothing for audio, video, text editor, playlist content.
 			case hasContent('grid'):	grid_btn_id = ( hasClass('#content_pane','has_image_grid') ? '#show_image_grid'	: hasClass('#content_pane','has_font_grid') ? '#show_font_grid' : '#show_grid_btn' );
@@ -3732,7 +3761,7 @@ console.log(newURL(args[1]));
 		let els = Array.from(document.querySelectorAll(sel)), selected_els = els.filter( el => el.classList.contains('selected'));					// get els to navigate and currently selected el(s)
 		let navigatedElIndex = ( /ArrowDown|ArrowRight/.test(e.key) ? els.indexOf(selected_els[selected_els.length - 1]) + 1 : /ArrowUp|ArrowLeft/.test(e.key) ? els.indexOf(selected_els[0]) - 1 : null );	// navigated el index
 		if ( bool !== false ) {																														// cycle round to first or last item (but not for selectMultiple via arrows)
-			navigatedElIndex = ( /ArrowDown|ArrowRight/.test(e.key) && els[navigatedElIndex] === undefined ? 0 : /ArrowUp|ArrowLeft/.test(e.key) && els[navigatedElIndex] === undefined ? els.length - 1 : navigatedElIndex ); 
+			navigatedElIndex = ( /ArrowDown|ArrowRight/.test(e.key) && els[navigatedElIndex] === undefined ? 0 : /ArrowUp|ArrowLeft/.test(e.key) && els[navigatedElIndex] === undefined ? els.length - 1 : navigatedElIndex );
 		}
 		return els[navigatedElIndex]?.id;																											// return the id of the navigated item
 	}
@@ -3742,7 +3771,7 @@ console.log(newURL(args[1]));
 			case bool === true:		selected_el = getEl('.media.selected') || getEls('.audio_loaded,.media.content_loaded,.dirlist_item.is_blurred')[0] || getEl('.media'); break;	// bool === true: autoplay media
 			default:				selected_el = getEl(nav_type).querySelector('.selected');																						// get currently selected item
 		}
-		if ( selected_el !== null ) { 
+		if ( selected_el !== null ) {
 			selected_el.classList.remove('selected');						// If there is a selected item...remove its selected class unless shuffle
 			if ( !/warning_buttons/.test(nav_type) ) {
 				switch(true) {																														// get both images and fonts from mixed grids for L/R navigation...
@@ -3788,7 +3817,7 @@ console.log(newURL(args[1]));
 					case ( /audio|video/.test(selected_el_kind) && key === 'ArrowRight' ):
 						switch(true) {																										// if autoplay off, navigated_el = selected_el, else navigated_el = next media item
 							case hasClass('body','shuffle_media') && getEl('#content_audio_container').dataset.shufflelist === '':	 mediaShuffleListUpdate();				// end of shuffle items
-								if ( hasClass('body','shuffle_media') && hasClass('body','loop_media') ) { navigated_el = getEl('#'+getEl('#content_audio_container').dataset.shufflelist.split(',')[0]); }	// if shuffle & loop 
+								if ( hasClass('body','shuffle_media') && hasClass('body','loop_media') ) { navigated_el = getEl('#'+getEl('#content_audio_container').dataset.shufflelist.split(',')[0]); }	// if shuffle & loop
 																																									break;
 							case hasClass('body','shuffle_media') && !/loaded/.test(selected_el.className):	mediaShuffleListUpdate(selected_el.id,false);					// no break: allow selected item to be played next
 							case hasClass('body','media_autoplay_false') && bool === true:					navigated_el = selected_el;								break;	// shuffle play
@@ -3810,18 +3839,18 @@ console.log(newURL(args[1]));
 					case navigated_el.id === 'sidebar_menu_parents':										menuShow(null,'sidebar_menu_parents');					break;
 					case hasContent('font_specimen_glyph'):												showFontGlyph(null,navigated_el.id);						break;
 					case hasContent('font_file_glyph'):														showFontGlyph(null,navigated_el.id);					break;	// show the navigated font file glyph
-					case hasClass('#content_pane','has_hidden_grid') && /image|font/.test(navigated_el.dataset.kind): 
+					case hasClass('#content_pane','has_hidden_grid') && /image|font/.test(navigated_el.dataset.kind):
 						removeClass('.grid_item.selected','selected');   navigated_el?.classList.add('selected');	showThis(navigated_el.dataset.id);						// no break
-					case ( /grid/.test(nav_type) ): 
+					case ( /grid/.test(nav_type) ):
 						getEl('#directory_list .selected')?.scrollIntoView({block:"nearest"});																				// scroll dir_list item into view
 						getEl('#content_pane .selected')?.scrollIntoView({behavior:"smooth",block:"nearest"});														break;	// scroll grid item into view
 				}																																					break;
-			case !isTopWindow(): 
+			case !isTopWindow():
 				switch(true) {
 					case hasClass('#content_body','has_quicklook'):									quickLookThis(navigated_el.id,navigated_el.dataset.kind);		break; // either quicklook or select item
 					default:																			showThis(navigated_el.id,true,false);
 				}																																					break;
-			case ( /ArrowUp|ArrowDown/.test(key) && getData(navigated_el,'kind') === 'audio' && !hasClass('#content_body','has_quicklook') ): 
+			case ( /ArrowUp|ArrowDown/.test(key) && getData(navigated_el,'kind') === 'audio' && !hasClass('#content_body','has_quicklook') ):
 																										showThis(navigated_el.id,true,false);						break;	// only select audio on U/D arrow
 			case ( /ArrowLeft|ArrowRight/.test(key) && navigated_el?.classList.contains('media') ):
 				switch(true) {
@@ -4314,8 +4343,8 @@ console.log(newURL(args[1]));
 	// FINIS! † DEO GRATIAS † //
 })();
 
-/* 
-### **VERSION 8.1.4** (2024-01-03)  
+/*
+### **VERSION 8.1.4** (2024-01-03)
 **IMPROVED:** Sorting should now honor browser language setting.
 TODO: check international date formats
 
